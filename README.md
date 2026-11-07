@@ -55,7 +55,7 @@ pokedex-app/
 
 1. **Clonar el repositorio:**
    ```bash
-   git clone https://github.com/TU_USUARIO/pokedex-app.git
+   git clone https://github.com/franklincordoba2001-ops/pokedex-app.git
    cd pokedex-app
    ```
 
