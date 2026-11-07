@@ -31,3 +31,4 @@ jobs:
         env:
           VITE_POKEAPI_URL: https://pokeapi.co/api/v2
         run: npm run build
+

@@ -1,29 +1,47 @@
 import { useState, useEffect, useId } from 'react';
 import { getPokemonList } from './services/pokemonService';
 import PokemonCard from './components/PokemonCard';
+import PokemonModal from './components/PokemonModal';
 import './App.css';
+
+const POKEMON_PER_PAGE = 30;
 
 /**
  * Componente Principal de la Aplicación Pokédex.
- * Gestiona el catálogo de Pokémon, estado de búsqueda y renderizado condicional.
+ * Gestiona el catálogo de Pokémon, búsqueda en tiempo real,
+ * modal de detalles y paginación incremental.
  */
 function App() {
-  // Estados requeridos de la interfaz
+  // 1. Estados requeridos de la interfaz
   const [pokemonList, setPokemonList] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+
+  // Estados interactivos adicionales (Modal y Paginación)
+  const [selectedPokemon, setSelectedPokemon] = useState(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
   const searchInputId = useId();
 
   // Función para consultar el catálogo inicial desde la PokéAPI
-  const fetchCatalog = () => {
-    setLoading(true);
+  const fetchCatalog = (currentOffset = 0, isInitial = false) => {
+    if (isInitial) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     setError(null);
 
-    getPokemonList(60, 0)
+    getPokemonList(POKEMON_PER_PAGE, currentOffset)
       .then((data) => {
-        setPokemonList(data);
+        if (data.length < POKEMON_PER_PAGE) {
+          setHasMore(false);
+        }
+        setPokemonList((prev) => (isInitial ? data : [...prev, ...data]));
+        setOffset(currentOffset + POKEMON_PER_PAGE);
       })
       .catch((err) => {
         setError(
@@ -33,17 +51,19 @@ function App() {
       })
       .finally(() => {
         setLoading(false);
+        setLoadingMore(false);
       });
   };
 
-  // Efecto ejecutado una sola vez al montar el componente (consulta inicial)
+  // 2. Consulta inicial al montar el componente
   useEffect(() => {
     let isMounted = true;
 
-    getPokemonList(60, 0)
+    getPokemonList(POKEMON_PER_PAGE, 0)
       .then((data) => {
         if (isMounted) {
           setPokemonList(data);
+          setOffset(POKEMON_PER_PAGE);
           setError(null);
         }
       })
@@ -66,7 +86,17 @@ function App() {
     };
   }, []);
 
-  // Filtrado reactivo en memoria en tiempo real sin recargar la página
+  const handleRetry = () => {
+    fetchCatalog(0, true);
+  };
+
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchCatalog(offset, false);
+    }
+  };
+
+  // 3. Filtrado reactivo en memoria en tiempo real
   const filteredPokemon = pokemonList.filter((pokemon) =>
     pokemon.name.toLowerCase().includes(search.toLowerCase().trim())
   );
@@ -119,7 +149,7 @@ function App() {
           <div className="search-meta">
             {!loading && !error && (
               <span className="search-meta__counter">
-                Mostrando <strong>{filteredPokemon.length}</strong> de {pokemonList.length} Pokémon
+                Mostrando <strong>{filteredPokemon.length}</strong> de {pokemonList.length} Pokémon cargados
               </span>
             )}
           </div>
@@ -143,7 +173,7 @@ function App() {
             <button
               type="button"
               className="btn-retry"
-              onClick={fetchCatalog}
+              onClick={handleRetry}
             >
               Reintentar Conexión
             </button>
@@ -170,16 +200,41 @@ function App() {
 
         {/* 4. Renderizado condicional: Cuadrícula con las Tarjetas Filtradas */}
         {!loading && !error && filteredPokemon.length > 0 && (
-          <section className="pokemon-grid" aria-label="Catálogo de Pokémon">
-            {filteredPokemon.map((pokemon) => (
-              <PokemonCard
-                key={pokemon.name}
-                pokemonName={pokemon.name}
-              />
-            ))}
-          </section>
+          <>
+            <section className="pokemon-grid" aria-label="Catálogo de Pokémon">
+              {filteredPokemon.map((pokemon) => (
+                <PokemonCard
+                  key={pokemon.name}
+                  pokemonName={pokemon.name}
+                  onSelect={(poke) => setSelectedPokemon(poke)}
+                />
+              ))}
+            </section>
+
+            {/* Paginación incremental ("Cargar más") cuando no hay búsqueda activa */}
+            {!search && hasMore && (
+              <div className="load-more-section">
+                <button
+                  type="button"
+                  className="btn-load-more"
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? 'Cargando más Pokémon...' : 'Cargar Más Pokémon'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
+
+      {/* Modal de Detalles Interactivos */}
+      {selectedPokemon && (
+        <PokemonModal
+          pokemon={selectedPokemon}
+          onClose={() => setSelectedPokemon(null)}
+        />
+      )}
 
       {/* Pie de página */}
       <footer className="pokedex-footer">

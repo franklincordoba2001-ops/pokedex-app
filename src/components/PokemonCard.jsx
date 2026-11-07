@@ -28,9 +28,9 @@ const TYPE_COLORS = {
  * Gestiona de forma desacoplada la obtención de los detalles (sprites, stats, tipos)
  * de acuerdo con el nombre recibido vía props.
  *
- * @param {{ pokemonName: string }} props
+ * @param {{ pokemonName: string, onSelect?: (pokemon: Object) => void }} props
  */
-function PokemonCard({ pokemonName }) {
+function PokemonCard({ pokemonName, onSelect }) {
   const [pokemon, setPokemon] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,7 +65,7 @@ function PokemonCard({ pokemonName }) {
     };
   }, [pokemonName]);
 
-  // 1. Renderizado condicional: Estado de Carga (Skeleton/Spinner)
+  // 1. Renderizado condicional: Estado de Carga (Skeleton)
   if (loading) {
     return (
       <div className="pokemon-card pokemon-card--loading" aria-busy="true">
@@ -110,9 +110,27 @@ function PokemonCard({ pokemonName }) {
   const primaryType = pokemon.types?.[0]?.type?.name || 'normal';
   const primaryColor = TYPE_COLORS[primaryType] || '#777';
 
+  const handleCardClick = () => {
+    if (onSelect && pokemon) {
+      onSelect(pokemon);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && onSelect && pokemon) {
+      e.preventDefault();
+      onSelect(pokemon);
+    }
+  };
+
   return (
     <article
-      className="pokemon-card"
+      className="pokemon-card pokemon-card--interactive"
+      tabIndex={0}
+      role="button"
+      onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
+      aria-label={`Ver detalles completos de ${formattedName}`}
       style={{
         '--type-color': primaryColor,
       }}
@@ -178,6 +196,10 @@ function PokemonCard({ pokemonName }) {
             <span className="pokemon-card__stat-value">{attackStat}</span>
           </div>
         </section>
+
+        <footer className="pokemon-card__footer">
+          <span className="pokemon-card__hint">Ver detalles completos &rarr;</span>
+        </footer>
       </div>
     </article>
   );
