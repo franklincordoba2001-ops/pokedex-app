@@ -1,0 +1,33 @@
+name: CI - Build & Quality Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ci:
+    name: Lint & Build Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Instalar dependencias limpias
+        run: npm ci
+
+      - name: Validación de calidad de código (Linter)
+        run: npm run lint
+
+      - name: Compilación de producción (Vite Build)
+        env:
+          VITE_POKEAPI_URL: https://pokeapi.co/api/v2
+        run: npm run build
